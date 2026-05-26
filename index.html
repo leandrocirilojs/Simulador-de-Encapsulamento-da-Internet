@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NetLab Ensino - Encapsulamento, DNS, DHCP e TCP</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="home-screen" class="screen active">
+    <div class="home-bg">
+      <div class="grid-overlay"></div>
+      <div class="pulse-rings"><span></span><span></span><span></span></div>
+    </div>
+
+    <main class="home-content">
+      <div class="badge">App Educativo de Redes</div>
+      <h1 class="home-title">
+        Aprenda redes com<br/>
+        <span class="gradient-text">simulações interativas</span>
+      </h1>
+      <p class="home-desc">
+        Veja DNS, DHCP DORA, TCP Handshake, encapsulamento, dispositivos por camada e desencapsulamento no destino.
+      </p>
+
+      <div class="protocol-selector">
+        <span class="selector-label">Transporte:</span>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="btn-tcp" onclick="selectProtocol('TCP')">TCP</button>
+          <button class="toggle-btn" id="btn-udp" onclick="selectProtocol('UDP')">UDP</button>
+        </div>
+      </div>
+
+      <div class="home-actions">
+        <button class="btn-primary" onclick="startSimulation()">▶ Entrar no Laboratório</button>
+        <button class="btn-secondary" onclick="showTable()">📊 Referência Rápida</button>
+      </div>
+    </main>
+  </div>
+
+  <div id="sim-screen" class="screen">
+    <header class="sim-header">
+      <button class="back-btn" onclick="goHome()">← Voltar</button>
+      <h2 class="sim-title">NetLab — <span id="protocol-label">TCP</span></h2>
+      <div class="header-actions">
+        <button class="btn-icon-only" title="Referência" onclick="showTable()">📊</button>
+        <button class="btn-icon-only" title="Reiniciar" onclick="resetAll()">↺</button>
+      </div>
+    </header>
+
+    <div class="sim-layout">
+      <aside class="layers-panel">
+        <p class="panel-hint">Clique numa camada ↓</p>
+
+        <div class="layer-card" id="layer-app" data-layer="app" onclick="clickLayer('app')">
+          <div class="layer-number">5</div><div class="layer-info"><span class="layer-name">Aplicação</span><span class="layer-protocols">HTTP · DNS · DHCP</span></div><div class="layer-pdu">Dados</div>
+        </div>
+        <div class="layer-arrow">↓</div>
+        <div class="layer-card" id="layer-trans" data-layer="trans" onclick="clickLayer('trans')">
+          <div class="layer-number">4</div><div class="layer-info"><span class="layer-name">Transporte</span><span class="layer-protocols" id="trans-proto-label">TCP · UDP</span></div><div class="layer-pdu" id="trans-pdu">Segmento</div>
+        </div>
+        <div class="layer-arrow">↓</div>
+        <div class="layer-card" id="layer-net" data-layer="net" onclick="clickLayer('net')">
+          <div class="layer-number">3</div><div class="layer-info"><span class="layer-name">Internet / Rede</span><span class="layer-protocols">IP · ICMP · ARP</span></div><div class="layer-pdu">Pacote</div>
+        </div>
+        <div class="layer-arrow">↓</div>
+        <div class="layer-card" id="layer-link" data-layer="link" onclick="clickLayer('link')">
+          <div class="layer-number">2</div><div class="layer-info"><span class="layer-name">Enlace</span><span class="layer-protocols">Ethernet · MAC</span></div><div class="layer-pdu">Quadro</div>
+        </div>
+        <div class="layer-arrow">↓</div>
+        <div class="layer-card" id="layer-phys" data-layer="phys" onclick="clickLayer('phys')">
+          <div class="layer-number">1</div><div class="layer-info"><span class="layer-name">Física</span><span class="layer-protocols">Bits · Sinais</span></div><div class="layer-pdu">Bits</div>
+        </div>
+
+        <div class="device-legend">
+          <h4>Dispositivos</h4>
+          <button onclick="explainDevice('switch')">🟧 Switch: Camada 2</button>
+          <button onclick="explainDevice('router')">🟩 Roteador: Camada 3</button>
+          <button onclick="explainDevice('server')">🟦 Servidor: Aplicação</button>
+        </div>
+      </aside>
+
+      <main class="data-panel">
+        <section class="mode-tabs" aria-label="Modos de simulação">
+          <button class="mode-tab active" data-mode="encap" onclick="setMode('encap')">Encapsulamento</button>
+          <button class="mode-tab" data-mode="decap" onclick="setMode('decap')">Desencapsulamento</button>
+          <button class="mode-tab" data-mode="tcp" onclick="setMode('tcp')">TCP Handshake</button>
+          <button class="mode-tab" data-mode="dns" onclick="setMode('dns')">DNS</button>
+          <button class="mode-tab" data-mode="dhcp" onclick="setMode('dhcp')">DHCP DORA</button>
+          <button class="mode-tab" data-mode="devices" onclick="setMode('devices')">Dispositivos</button>
+        </section>
+
+        <section class="network-scene" id="network-scene">
+          <div class="device" id="dev-client"><div class="device-icon">💻</div><strong>Cliente</strong><span>192.168.1.10</span></div>
+          <div class="link-line"><span></span></div>
+          <div class="device" id="dev-switch"><div class="device-icon">🟧</div><strong>Switch</strong><span>Camada 2 / MAC</span></div>
+          <div class="link-line"><span></span></div>
+          <div class="device" id="dev-router"><div class="device-icon">🟩</div><strong>Roteador</strong><span>Camada 3 / IP</span></div>
+          <div class="link-line"><span></span></div>
+          <div class="device" id="dev-server"><div class="device-icon">🖥️</div><strong>Servidor</strong><span>google.com</span></div>
+          <div id="packet" class="packet hidden">TCP</div>
+        </section>
+
+        <div class="data-panel-header">
+          <h3 id="mode-title">Encapsulamento de Dados</h3>
+          <div id="step-indicator" class="step-indicator">Aguardando…</div>
+        </div>
+
+        <section class="encap-box" id="encap-box">
+          <div class="encap-placeholder"><span>▶ Escolha um modo e clique em Animar</span></div>
+        </section>
+
+        <section class="lesson-card" id="lesson-card">
+          <h4>O que observar?</h4>
+          <p id="lesson-text">Cada camada adiciona ou remove informações para que os dados sejam enviados pela rede.</p>
+        </section>
+
+        <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+        <div class="sim-controls">
+          <button class="btn-sim" id="btn-play" onclick="playCurrentMode()">▶ Animar</button>
+          <button class="btn-sim" id="btn-next" onclick="nextStep()">Próximo →</button>
+          <button class="btn-sim secondary" onclick="resetMode()">↺ Reiniciar modo</button>
+        </div>
+
+        <section class="tables-grid">
+          <div class="mini-table">
+            <h4>🟧 Tabela MAC do Switch</h4>
+            <table><tbody id="mac-table"><tr><td>Vazia</td><td>Aguardando quadros</td></tr></tbody></table>
+          </div>
+          <div class="mini-table">
+            <h4>🌐 Tabela DNS / ARP</h4>
+            <table><tbody id="net-table"><tr><td>google.com</td><td>aguardando consulta</td></tr></tbody></table>
+          </div>
+        </section>
+
+        <section class="detail-panel" id="detail-panel" style="display:none">
+          <button class="detail-close" onclick="closeDetail()">✕</button>
+          <h4 id="detail-title"></h4>
+          <p id="detail-desc"></p>
+          <div class="detail-meta">
+            <div class="meta-item"><span class="meta-label">Protocolos</span><span id="detail-protocols"></span></div>
+            <div class="meta-item"><span class="meta-label">PDU</span><span id="detail-pdu"></span></div>
+            <div class="meta-item"><span class="meta-label">Exemplo</span><span id="detail-example"></span></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="table-modal" class="modal-overlay" onclick="closeTable(event)">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeTable()">✕</button>
+      <h2 class="modal-title">📊 Referência Rápida de Redes</h2>
+      <div class="table-wrap">
+        <table class="edu-table">
+          <thead><tr><th>Camada</th><th>PDU</th><th>Dispositivo</th><th>O que faz</th></tr></thead>
+          <tbody>
+            <tr class="row-app"><td>Aplicação</td><td>Dados</td><td>Servidor / App</td><td>HTTP, DNS, DHCP, SMTP</td></tr>
+            <tr class="row-trans"><td>Transporte</td><td>Segmento/Datagrama</td><td>Host</td><td>Portas, TCP, UDP, entrega fim a fim</td></tr>
+            <tr class="row-net"><td>Rede</td><td>Pacote</td><td>Roteador</td><td>IP, roteamento entre redes</td></tr>
+            <tr class="row-link"><td>Enlace</td><td>Quadro</td><td>Switch</td><td>MAC, Ethernet, rede local</td></tr>
+            <tr class="row-phys"><td>Física</td><td>Bits</td><td>Cabo/Wi-Fi</td><td>Sinais elétricos, luz ou rádio</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="encap-flow">
+        <h3>Encapsulamento</h3>
+        <div class="flow-steps"><div class="flow-step app">Dados</div><div class="flow-arrow">→</div><div class="flow-step trans">Segmento</div><div class="flow-arrow">→</div><div class="flow-step net">Pacote</div><div class="flow-arrow">→</div><div class="flow-step link">Quadro</div><div class="flow-arrow">→</div><div class="flow-step phys">Bits</div></div>
+        <h3>Desencapsulamento</h3>
+        <div class="flow-steps"><div class="flow-step phys">Bits</div><div class="flow-arrow">→</div><div class="flow-step link">Quadro</div><div class="flow-arrow">→</div><div class="flow-step net">Pacote</div><div class="flow-arrow">→</div><div class="flow-step trans">Segmento</div><div class="flow-arrow">→</div><div class="flow-step app">Dados</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
